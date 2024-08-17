@@ -2,10 +2,9 @@ const WebSocket = require('ws');
 const sqlite3 = require('sqlite3').verbose();
 require('dotenv').config();
 
-const PORT  = process.env.PORT || 8080
+const PORT  = process.env.PORT || 8080;
 
 const wss = new WebSocket.Server({ port: PORT });
-
 
 const db = new sqlite3.Database('./chat.db', (err) => {
   if (err) {
@@ -14,7 +13,6 @@ const db = new sqlite3.Database('./chat.db', (err) => {
     console.log('Connected to SQLite database.');
   }
 });
-
 
 db.run(`
   CREATE TABLE IF NOT EXISTS messages (
@@ -28,6 +26,7 @@ db.run(`
 wss.on('connection', (ws) => {
   console.log('Client connected');
 
+  // Send all existing messages to the new client
   db.all(`SELECT * FROM messages ORDER BY timestamp ASC`, [], (err, rows) => {
     if (err) {
       console.error('Error fetching messages from database:', err);
@@ -38,7 +37,13 @@ wss.on('connection', (ws) => {
     }
   });
 
+  // Handle incoming messages
   ws.on('message', async (message) => {
+    if (message.trim() === '') {
+      console.warn('Received empty message, ignoring.');
+      return;
+    }
+
     console.log(`Received: ${message}`);
 
     const timestamp = new Date().toISOString();
@@ -70,4 +75,5 @@ process.on('SIGINT', () => {
     process.exit(0);
   });
 });
+
 console.log(`WebSocket server is running on ws://localhost:${PORT}`);
